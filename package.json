@@ -1,0 +1,32 @@
+{
+   "name": "node-red-contrib-minecraft-ping",
+   "description": "A Node-RED node that pings a Minecraft server to see if my daughter is _still_ logged-in.",
+   "keywords": [
+      "node-red",
+      "minecraft",
+      "parent-automation",
+      "sigh"
+   ],
+   "version": "0.0.1",
+   "license": "ISC",
+   "homepage": "https://github.com/tomgidden/node-red-contrib-minecraft-ping#readme",
+   "author": {
+      "name": "Tom Gidden",
+      "email": "tom@gidden.net"
+   },
+   "bugs": {
+      "url": "https://github.com/tomgidden/node-red-contrib-minecraft-ping/issues"
+   },
+   "repository": {
+      "type": "git",
+      "url": "git+https://github.com/tomgidden/node-red-contrib-minecraft-ping.git"
+   },
+   "dependencies": {
+      "minecraft-protocol": "^1.8.3"
+   },
+   "node-red": {
+      "nodes": {
+          "minecraft-ping": "minecraft-ping.js"
+      }
+   }
+}
