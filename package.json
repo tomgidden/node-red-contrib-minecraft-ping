@@ -4,10 +4,9 @@
    "keywords": [
       "node-red",
       "minecraft",
-      "parent-automation",
-      "sigh"
+      "parent-automation"
    ],
-   "version": "0.0.1",
+   "version": "0.2",
    "license": "ISC",
    "homepage": "https://github.com/tomgidden/node-red-contrib-minecraft-ping#readme",
    "author": {
@@ -26,7 +25,7 @@
    },
    "node-red": {
       "nodes": {
-          "minecraft-ping": "minecraft-ping.js"
+         "minecraft-ping": "minecraft-ping.js"
       }
    }
 }

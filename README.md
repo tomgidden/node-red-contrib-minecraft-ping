@@ -1,21 +1,17 @@
 # node-red-contrib-minecraft-ping
 
-A Node-RED node that pings a Minecraft server to see if my daughter
+Node-RED nodes to ping a Minecraft server to see if my daughter
 is _still_ logged-in.
 
-This simple node uses the [Minecraft ping
-protocol](https://github.com/PrismarineJS/node-minecraft-protocol) to get
-a list of _sample_ players logged-in to a server, and the number of
+These simple nodes use the
+[Minecraft ping protocol](https://github.com/PrismarineJS/node-minecraft-protocol)
+to get a list of _sample_ players logged-in to a server, and the number of
 players.  As I understand it, this is not guaranteed to contain all (if
 any) players, but I think this simple _"ping"_ API can be achieved without
 a full server login, and for a small private server will probably deliver
 the required information... it certainly does what _I_ need it to do.
 
-I use this node with a repeating _Inject_ node and then filter the payload
-using a _Function_ node to check and time specific users, updating
-_MQTT_ for consumption by other devices.
-
-This node is simple, but could be forked and extended to provide a much
+These nodes is simple, but could be forked and extended to provide a much
 larger interface to Minecraft.  See
 [node-minecraft-protocol](https://github.com/PrismarineJS/node-minecraft-protocol)
 for the more-extensive JavaScript API.

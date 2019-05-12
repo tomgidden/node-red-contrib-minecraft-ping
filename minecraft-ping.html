@@ -1,87 +1,201 @@
 <script type="text/javascript">
-
 RED.nodes.registerType("minecraft-ping-server", {
     category: "config",
     defaults: {
         host: {
-            value: "localhost",
+            value:    "localhost",
             required: true
         },
         port: {
-            value:25565,
-            required:true,
-            validate:RED.validators.number()
+            value:    25565,
+            required: true,
+            validate: RED.validators.number()
         },
     },
     label: function() {
-        return this.host+":"+this.port;
+        return this.host + ":" + this.port;
     }
 });
 
 RED.nodes.registerType("minecraft-ping",{
     category: "social",
-    color: "#3e913c",
+    color:    "#3e913c",
     defaults: {
         server: { type: "minecraft-ping-server" }
     },
-    inputs: 1,
+    inputs:  1,
     outputs: 1,
-    icon: "minecraft-creeper-3-alpha.png",
-    label: function() {
-        return this.name || "Minecraft Ping";
+    icon:    "minecraft-creeper-3-alpha.png",
+    paletteLabel: "Minecraft Ping Raw Data",
+    label:   function() {
+        return this.name || this._def.paletteLabel;
+    }
+});
+
+RED.nodes.registerType("minecraft-ping-users",{
+    category: "social",
+    color:    "#3e913c",
+    paletteLabel: "Minecraft Ping Users",
+    defaults: {
+        server: {
+            type: "minecraft-ping-server"
+        },
+        userid: {
+            value: ""
+        },
+        do_not_ping: {
+            value: false
+        }
+    },
+    contextStorage: {
+        default: {
+            module: "localfilesystem"
+        }
+    },
+    inputs:  1,
+    outputs: 1,
+    icon:    "minecraft-creeper-3-alpha.png",
+    label:   function() {
+        console.log(this);
+
+        var name = this._def.paletteLabel;
+
+        if (this.name) {
+            name = this.name;
+        }
+        else {
+            if (this.userid) {
+                name = this.userid;
+
+                // @todo: Is it possible to get the correct values for
+                // `host` and `port` from `this.server`?  All that the
+                // client-side has is the node ID.  If the host/port was
+                // defined without a configuration node, it'd be
+                // available, but it's useful having the server
+                // configuration this way.
+                //
+                //     if (this.host) {
+                //         if (name) name += '@';
+                //         name += this.server.host+':'+this.server.port;
+                //     }
+            }
+        }
+
+        if (this.do_not_ping)
+            name += ' <i class="fa fa-bell-slash"></i>';
+
+        return name;
     }
 });
 </script>
 
 <script type="text/x-red" data-template-name="minecraft-ping-server">
   <div class="form-row">
-    <label for="node-config-input-host"><i class="icon-bookmark"></i> Host</label>
+    <label for="node-config-input-host"><i style="width:1.1em" class="fa fa-server"></i> Host</label>
     <input type="text" id="node-config-input-host">
   </div>
   <div class="form-row">
-    <label for="node-config-input-port"><i class="icon-bookmark"></i> Port</label>
+    <label for="node-config-input-port"><i style="width:1.1em" class="fa fa-plug"></i> Port</label>
     <input type="text" id="node-config-input-port">
   </div>
 </script>
 
 <script type="text/x-red" data-template-name="minecraft-ping">
   <div class="form-row">
-    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <label for="node-input-name"><i style="width:1.1em" class="icon-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Name">
   </div>
-
   <div class="form-row">
-    <label for="node-input-server"><i class="icon-tag"></i> Server</label>
+    <label for="node-input-server"><i style="width:1.1em" class="fa fa-server"></i> Server</label>
     <input id="node-input-server">
   </div>
 </script>
 
+<script type="text/x-red" data-template-name="minecraft-ping-users">
+  <div class="form-row">
+    <label for="node-input-name"><i style="width:1.1em" class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-server"><i style="width:1.1em" class="fa fa-server"></i> Server</label>
+    <input id="node-input-server">
+  </div>
+  <div class="form-row">
+    <label for="node-input-userid"><i style="width:1.1em" class="fa fa-user"></i> User ID</label>
+    <input type="text" id="node-input-userid" placeholder="Minecraft nickname or UUID; empty for all">
+  </div>
+  <div class="form-row">
+    <label for="node-input-do_not_ping"><i style="width:1.1em" class="fa fa-bell-slash"></i> Do not ping</label>
+    <input type="checkbox" id="node-input-do_not_ping">
+  </div>
+</script>
+
 <script type="text/x-red" data-help-name="minecraft-ping">
-
-  <p>A Node-RED node that pings a Minecraft server to see if my daughter
-  is <em>still</em> logged-in.</p>
-
   <p>
-    This simple node uses
-    the <a href="https://github.com/PrismarineJS/node-minecraft-protocol">Minecraft
-    ping protocol</a> to get a list of <em>sample</em> players logged-in
-    to a server, and the number of players.  As I understand it, this is
-    not guaranteed to contain all (if any) players, but I think this
-    simple <i>"ping"</i> API can be achieved without a full server login,
-    and for a small private server will probably deliver the required
-    information... it certainly does what <em>I</em> need it to do.
+    This simple node uses the
+    <a href="https://github.com/PrismarineJS/node-minecraft-protocol">Minecraft ping protocol</a>
+    to get a list of <em>sample</em> players logged-in to a server, and
+    the number of players.  As I understand it, this is not guaranteed to
+    contain all (if any) players, but I think this simple <i>"ping"</i>
+    API can be achieved without a full server login, and for a small
+    private server will probably deliver the required information... it
+    certainly does what <em>I</em> need it to do.
   </p>
-
   <p>
     I use this node with a repeating <em>Inject</em> node and then filter
     the payload using a <em>Function</em> node to check and time specific
     users, updating <em>MQTT</em> for consumption by other devices.
   </p>
-
   <p>
-    This node is simple, but could be forked and extended to provide a
-    much larger interface to Minecraft.
-    See <a href="https://github.com/PrismarineJS/node-minecraft-protocol">PrismarineJS/node-minecraft-protocol</a>
+    This node returns the somewhat raw data from the <em>Minecraft
+    Ping</em> protocol, so more logic may be needed to make it useful.
+    Alternatively, the higher-level <em>Minecraft Ping Users</em> node can
+    be used instead to keep track of a user's time online.
+  </p>
+  <p>
+    These nodes are simple, but could be forked and extended to provide a
+    much larger interface to Minecraft. See
+    <a href="https://github.com/PrismarineJS/node-minecraft-protocol">PrismarineJS/node-minecraft-protocol</a>
+    for the more-extensive JavaScript API.
+  </p>
+</script>
+
+<script type="text/x-red" data-help-name="minecraft-ping-users">
+  <p>
+    This node uses the
+    <a href="https://github.com/PrismarineJS/node-minecraft-protocol">Minecraft ping protocol</a>
+    to get a list of <em>sample</em> players logged-in to a server, and
+    the number of players.  As I understand it, this is not guaranteed to
+    contain all (if any) players, but I think this simple <i>"ping"</i>
+    API can be achieved without a full server login, and for a small
+    private server will probably deliver the required information... it
+    certainly does what <em>I</em> need it to do.
+  </p>
+  <p>
+    While <em>Minecraft Ping Raw Data</em> merely returns the raw data
+    from the server, this node returns its understanding of the status of
+    a user (or all users) whether online or not.  It keeps track of how
+    long the user has been online or was online last
+    (in <em>milliseconds</em>), as well as a history of join/leave times.
+    That history could be used to calculate cumulative times spent online
+    over the past day, week, month, or whatever.
+  </p>
+  <p>
+    The node can be passed the user ID (Minecraft nickname, or their
+    unique and unchanging UUID code) either in the node configuration, in
+    the message as <code>msg.userid</code>, or the payload (as a string).
+    If none is given, then an empty string is used, which means that the
+    statuses of all known users are returned as an array.
+  </p>
+  <p>
+    In addition, if you just want to query the existing data without
+    actually performing a ping at the server, set
+    <code>msg.do_not_ping</code>; it will return known data only.
+  </p>
+  <p>
+    These nodes are simple, but could be forked and extended to provide a
+    much larger interface to Minecraft.  See
+    <a href="https://github.com/PrismarineJS/node-minecraft-protocol">PrismarineJS/node-minecraft-protocol</a>
     for the more-extensive JavaScript API.
   </p>
 </script>
