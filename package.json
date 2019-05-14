@@ -6,7 +6,7 @@
       "minecraft",
       "parent-automation"
    ],
-   "version": "0.1.0",
+   "version": "0.1.1",
    "license": "ISC",
    "homepage": "https://github.com/tomgidden/node-red-contrib-minecraft-ping#readme",
    "author": {

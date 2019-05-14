@@ -2,7 +2,7 @@ module.exports = function(RED) {
     "use strict";
 
     // The storage key for persistent data
-    var ctx_key_prefix = 'minecraft-ping-users.v1.';
+    var ctx_key_prefix = 'minecraft-ping-users_v1';
 
     RED.nodes.registerType("minecraft-ping-server", function (config) {
         RED.nodes.createNode(this, config);
@@ -50,6 +50,22 @@ module.exports = function(RED) {
         // Initialise the third-party library
         var mc = require("minecraft-protocol");
 
+        // Set up persistent data
+        var ctx;
+        try {
+            ctx = this.context().global;
+            ctx.get(ctx_key_prefix);
+        }
+        catch (error) {
+            console.warn("Persistent state '"+ctx_key_prefix+"' not set.");
+            try {
+                ctx.set(ctx_key_prefix, {});
+            }
+            catch (error) {
+                console.error("Persistent state '"+ctx_key_prefix+"' failed to clear.");
+            }
+        }
+
         // Function to process the results of a ping, updating the
         // "state", ie. the user list.
         node.processPing = function (data, params) {
@@ -57,9 +73,6 @@ module.exports = function(RED) {
             // Iteration variables
             var i, id, name;
             var now = (new Date());
-
-            // Get persistent state
-            var ctx = this.context().global;
 
             // If we got valid data
             if (data && undefined !== data.players) {
@@ -205,12 +218,18 @@ module.exports = function(RED) {
             delete msg.payload;
 
             // Get persistent list of users
-            var ctx = this.context().global;
-            var state = ctx.get(params.ctx_key);
+            try {
+                var state = ctx.get(params.ctx_key);
+            }
+            catch (error) {
+                msg.error = error;
+                node.error(error);
+                state = undefined;
+            }
 
             if (undefined === state) {
                 // Not run yet.
-                msg.error = 'State data is not loaded yet';
+                msg.error = msg.error || 'State data is not loaded (yet)';
             }
             else if ('' === params.userid) {
                 // Return all users' states
@@ -271,96 +290,122 @@ module.exports = function(RED) {
         // no specific user requested.
         node.on("input", function (msg) {
 
-            node.params = {
-                "host":        msg.host || server.host || "localhost",
-                "port":        msg.port || server.port || 25565,
-                "do_not_ping": !!(msg.do_not_ping || config.do_not_ping || false),
-                "userid":      config.userid || undefined
-            };
+            // Catch exceptions, like a good boy.
+            try {
 
-            // Prepare a key for storing this server's user list state; as
-            // contexts use '.' as key separators, convert these to
-            // something else.
-            var host = node.params.host.replace(/\./g, ':');
-            node.params.ctx_key = ctx_key_prefix + host + ':' + node.params.port;
+                node.params = {
+                    "host":        msg.host || server.host || "localhost",
+                    "port":        msg.port || server.port || 25565,
+                    "do_not_ping": !!(msg.do_not_ping || config.do_not_ping || false),
+                    "userid":      config.userid || undefined
+                };
 
-            // Userid priority:  msg.userid > config.userid > msg.payload (if string) > '' (default)
-            // A userid of '' means "all users" (an array of objects).
-            // A userid can either be the Minecraft user's nickname, or their UUID-style ID.
-            if (undefined !== msg.userid) {
-                node.params.userid = msg.userid;
-                delete msg.userid;
-            }
-            else if (undefined === node.params.userid) {
-                // Neither the node configuration or msg.userid have been set.
+                // Prepare a key for storing this server's user list state; as
+                // contexts use '.' as key separators, convert these to
+                // something else.
+                var host = node.params.host.replace(/\./g, ':');
+                node.params.ctx_key = ctx_key_prefix + '.' + host + ':' + node.params.port;
 
-                if ('string' === typeof msg.payload) {
-                    // For ease-of-use, userid can be passed in the payload.
-                    node.params.userid = msg.payload;
+                // Make sure it's set up.
+                try { ctx.get(node.params.ctx_key); }
+                catch (error) {
+                    try { ctx.set(node.params.ctx_key, {}); }
+                    catch (error) {
+                        node.error("Failed to store persistent state '"+node.params.ctx_key+"'");
+                        return;
+                    }
                 }
-                else {
-                    // Default to use all
-                    node.params.userid = '';
+
+                // Userid priority:  msg.userid > config.userid > msg.payload (if string) > '' (default)
+                // A userid of '' means "all users" (an array of objects).
+                // A userid can either be the Minecraft user's nickname, or their UUID-style ID.
+                if (undefined !== msg.userid) {
+                    node.params.userid = msg.userid;
+                    delete msg.userid;
                 }
-            }
+                else if (undefined === node.params.userid) {
+                    // Neither the node configuration or msg.userid have been set.
 
-            if (node.params.do_not_ping) {
-
-                // If `do_not_ping` is set, then just return the stored
-                // list.
-                msg = node.processMessage(msg, node.params, false);
-                node.send(msg);
-                return;
-            }
-
-            else if (undefined !== msg.fake_data) {
-                // Debugging...
-
-                // Process the data that was acquired
-                var ret = node.processPing(msg.fake_data, node.params);
-
-                if ('string' === typeof ret) {
-                    msg.error = ret;
-                }
-                else {
-                    // Process the node request for data
-                    msg = node.processMessage(msg, node.params, true);
-                    node.send(msg);
-                }
-            }
-            else {
-                // Perform the ping
-                mc.ping(node.params, function (err, data) {
-
-                    // Copy the parameters into the message we'll reply
-                    // with, for debugging.
-                    msg.params = node.params;
-
-                    if (err) {
-                        msg.error = err;
+                    if ('string' === typeof msg.payload) {
+                        // For ease-of-use, userid can be passed in the payload.
+                        node.params.userid = msg.payload;
                     }
                     else {
-                        // Process the data that was acquired
-                        var ret = node.processPing(data, node.params);
+                        // Default to use all
+                        node.params.userid = '';
+                    }
+                }
 
-                        if ('string' === typeof ret) {
-                            msg.error = ret;
+                if (node.params.do_not_ping) {
+
+                    // If `do_not_ping` is set, then just return the stored
+                    // list.
+                    msg = node.processMessage(msg, node.params, false);
+                    node.send(msg);
+                    return;
+                }
+
+                else if (undefined !== msg.fake_data) {
+                    // Debugging...
+
+                    // Process the data that was acquired
+                    var ret = node.processPing(msg.fake_data, node.params);
+
+                    if ('string' === typeof ret) {
+                        msg.error = ret;
+                    }
+                    else {
+                        // Process the node request for data
+                        msg = node.processMessage(msg, node.params, true);
+                        node.send(msg);
+                    }
+                }
+                else {
+                    // Perform the ping
+                    mc.ping(node.params, function (err, data) {
+
+                        // Copy the parameters into the message we'll reply
+                        // with, for debugging.
+                        msg.params = node.params;
+
+                        if (err) {
+                            msg.error = err;
                         }
                         else {
-                            // Process the node request for data
-                            msg = node.processMessage(msg, node.params, true);
-                            node.send(msg);
+                            // Process the data that was acquired
+                            try {
+                                var ret = node.processPing(data, node.params);
+                            } catch (error) {
+                                node.error("Failed to process Minecraft ping data: "+error);
+                                ret = error;
+                            }
+
+                            if ('string' === typeof ret) {
+                                msg.error = ret;
+                            }
+                            else {
+                                // Process the node request for data
+                                try {
+                                    msg = node.processMessage(msg, node.params, true);
+                                    node.send(msg);
+                                }
+                                catch (error) {
+                                    node.error("Failed to process message: "+error);
+                                }
+                            }
                         }
-                    }
 
-
-                    if (undefined !== msg.error) {
-                        node.status({fill:"red",shape:"ring",text:msg.error});
-                    }
-                    else {
-                        node.status({fill:"green",shape:"dot",text:'Success'});
-                    }
-                });
+                        if (undefined !== msg.error) {
+                            node.status({fill:"red",shape:"ring",text:msg.error});
+                        }
+                        else {
+                            node.status({fill:"green",shape:"dot",text:'Success'});
+                        }
+                    });
+                }
+            }
+            catch (error) {
+                node.error(error);
             }
         });
     });
